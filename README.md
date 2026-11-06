@@ -1,16 +1,31 @@
-# React + Vite
+# Norvax Hub
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React/Vite storefront for individually packed honey sticks. Keeps the existing product photography and brand mark, with a responsive editorial layout, a selectable 5g/10g collection, persistent shopping bag and email enquiry drafts.
 
-Currently, two official plugins are available:
+## Development
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```sh
+npm ci
+npm run dev
+npm run build
+node --test tests/catalog.test.js
+```
 
-## React Compiler
+## Product animation
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+`src/HoneyScene.jsx` contains lazy-loaded Three.js product, filling and pouring scenes. Clear flexible wrappers, an amber fill, seals and labels are modelled procedurally; the original bee logo is applied to the label texture. These are product illustrations rather than photographic manufacturing footage. The model is based on the existing photos, not measured production CAD.
 
-## Expanding the Oxlint configuration
+`src/HoneyIllustration.jsx` provides animated SVG scenes when WebGL is unavailable. Scenes respect reduced-motion preferences and include pause/replay controls. WebGL rendering pauses when off-screen or the document is hidden. GPU resources are disposed on unmount.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+## Orders and contact
+
+Prices, payments and a contact backend were not configured in the original site. The bag now starts empty, validates restored local-storage data, and creates an enquiry summary with the selected variants and quantities. The contact form prepares a `mailto:` link; a visitor must review and send the email in their own email application. It does not silently send messages or claim submission success. The existing `hello@norvaxhub.com` address is retained in `src/App.jsx`; confirm it before accepting enquiries. No payment is collected.
+
+## Validation
+
+- Production build passes. Three.js is a separately loaded chunk; Vite reports its chunk-size advisory.
+- Six regression tests cover catalogue weights, cart merging and bounds, corrupt storage, and exact enquiry summaries.
+- Desktop and 390px-frame browser checks cover navigation, size/pack selection, cart totals and email-draft preparation. No email was sent.
+- The cloud preview browser has WebGL disabled, so animated SVG fallback was inspected. Full WebGL visual validation remains necessary on a GPU-capable device before production release.
+
+The existing Vercel project is `norvax-hub`. Retain that project and domain when deploying this repository.

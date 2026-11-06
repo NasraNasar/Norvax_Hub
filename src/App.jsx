@@ -1,681 +1,178 @@
-import { useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { addItem, orderSummary, products, restoreCart, weight } from './catalog'
 import './App.css'
+import HoneyIllustration from './HoneyIllustration'
 
-const navItems = [
-  { label: 'Home', href: 'home' },
-  { label: 'Shop', href: 'shop' },
-  { label: 'Our Honey', href: 'our-honey' },
-  { label: 'How It Works', href: 'how-it-works' },
-  { label: 'Wholesale', href: 'wholesale' },
-  { label: 'Our Story', href: 'our-story' },
-  { label: 'FAQ', href: 'faq' },
-  { label: 'Contact', href: 'contact' },
+const HoneyScene = lazy(() => import('./HoneyScene'))
+const email = 'hello@norvaxhub.com'
+const faqs = [
+  ['What is a honey stick?', 'A convenient, individually sealed portion of honey. Keep a few at home, at your desk or in your bag, ready for a sweeter moment.'],
+  ['Which sizes and packs can I choose?', 'Choose a 5g or 10g stick, in packs of 5, 10, 20 or 50. The total honey weight is shown with every option.'],
+  ['How do I use it?', 'Open the top of the wrapper, squeeze the honey into your tea, coffee or breakfast, and stir if needed. Dispose of the empty wrapper after use.'],
+  ['How should I store my honey sticks?', 'Store in a cool, dry place away from direct sunlight. Keep the wrapper sealed until you are ready to use it. Check your pack for best-before and origin information.'],
+  ['Can honey crystallize?', 'Honey can naturally crystallize over time. Contact us if you have a question about your particular pack.'],
+  ['How do I order, and where do you deliver?', 'Select your packs and request an order quote. We will confirm pricing, delivery availability and payment arrangements with you before you place an order.'],
+  ['Do you offer wholesale?', 'Yes. Tell us about your café, office, event or retail business using the wholesale form below. Include your preferred stick size and estimated quantity.'],
 ]
 
-const featureCards = [
-  { title: 'Individually Packed', text: 'Convenient single servings.' },
-  { title: 'Easy To Carry', text: 'Simple to keep at home, work or while travelling.' },
-  { title: 'Easy To Use', text: 'Tear. Squeeze. Enjoy.' },
-]
-
-const catalogProducts = [
-  { id: '5g-5', size: '5g', pack: 5, total: '25g total', qty: 1, image: '/images/pack-5g-5.jpg' },
-  { id: '5g-10', size: '5g', pack: 10, total: '50g total', qty: 1, image: '/images/pack-5g-10.jpg' },
-  { id: '5g-20', size: '5g', pack: 20, total: '100g total', qty: 1, image: '/images/pack-5g-20.jpg' },
-  { id: '5g-50', size: '5g', pack: 50, total: '250g total', qty: 1, image: '/images/hero-honey-pack.jpg' },
-  { id: '10g-5', size: '10g', pack: 5, total: '50g total', qty: 1, image: '/images/pack-10g-5.jpg' },
-  { id: '10g-10', size: '10g', pack: 10, total: '100g total', qty: 1, image: '/images/pack-10g-10.jpg' },
-  { id: '10g-20', size: '10g', pack: 20, total: '200g total', qty: 1, image: '/images/pack-10g-20.jpg' },
-  { id: '10g-50', size: '10g', pack: 50, total: '500g total', qty: 1, image: '/images/pack-10g-50.png' },
-]
-
-const useCases = [
-  { name: 'Tea', icon: '☕' },
-  { name: 'Coffee', icon: '☕' },
-  { name: 'Breakfast', icon: '🥣' },
-  { name: 'Office', icon: '💼' },
-  { name: 'On The Go', icon: '🧳' },
-]
-
-const faqItems = [
-  { question: 'What is a Norvax Hub Honey Stick?', answer: 'A convenient single-serve honey sachet designed for easy use at home, work or while travelling.' },
-  { question: 'How much honey is in each stick?', answer: 'Each stick contains either 5g or 10g of honey, depending on the selected format.' },
-  { question: 'What sizes are available?', answer: 'Norvax Hub offers 5g and 10g individually packed honey sticks.' },
-  { question: 'What pack sizes are available?', answer: 'The packs include 5, 10, 20 and 50-stick options.' },
-  { question: 'How do I open a honey stick?', answer: 'Tear gently at the top, squeeze the sachet, and enjoy the honey.' },
-  { question: 'How should I store the honey sticks?', answer: 'Store in a cool, dry place away from direct sunlight. Keep sealed until ready to use.' },
-  { question: 'Can honey naturally crystallize?', answer: 'Yes, honey can crystallize naturally over time depending on conditions. This does not necessarily affect enjoyment.' },
-  { question: 'Do you offer wholesale orders?', answer: 'Yes, wholesale and bulk enquiries are available through the dedicated wholesale section.' },
-  { question: 'Where do you deliver?', answer: 'Delivery options can be confirmed with the Norvax Hub team based on your location and order requirements.' },
-  { question: 'How can I contact Norvax Hub?', answer: 'Use the contact form, WhatsApp button or email details listed on the contact section.' },
-]
-
-const introBullets = [
-  'Natural goodness',
-  'Boosts energy',
-  'Supports immunity',
-  'No added preservatives',
-]
-
-function App() {
-  const [activeSize, setActiveSize] = useState('5g')
-  const [buildSize, setBuildSize] = useState('5g')
-  const [buildPack, setBuildPack] = useState(20)
-  const [expandedFaq, setExpandedFaq] = useState(0)
-  const [heroTilt, setHeroTilt] = useState({ x: 0, y: 0 })
-  const [productQuantities, setProductQuantities] = useState(
-    Object.fromEntries(catalogProducts.map((product) => [product.id, product.qty])),
-  )
-  const [cart, setCart] = useState([
-    { id: '5g-20', size: '5g', pack: 20, quantity: 1, label: '5g • Pack of 20', weight: '100g', price: 'Configurable' },
-  ])
-
-  const scrollToSection = (sectionId) => {
-    const section = document.getElementById(sectionId)
-    if (section) {
-      section.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
-  }
-
-  const totalHoneyWeight = useMemo(() => {
-    const grams = Number.parseInt(buildSize, 10)
-    return grams * buildPack
-  }, [buildPack, buildSize])
-
-  const subtotal = cart.reduce((sum, item) => sum + (item.quantity || 0), 0)
-
-  const addToCart = (product) => {
-    const quantity = productQuantities[product.id] || 1
-    const existing = cart.find((item) => item.id === product.id)
-
-    if (existing) {
-      setCart((current) =>
-        current.map((item) =>
-          item.id === product.id ? { ...item, quantity: item.quantity + quantity } : item,
-        ),
-      )
-      return
-    }
-
-    setCart((current) => [
-      ...current,
-      {
-        id: product.id,
-        size: product.size,
-        pack: product.pack,
-        quantity,
-        label: `${product.size} • Pack of ${product.pack}`,
-        weight: product.total,
-        price: 'Configurable',
-      },
-    ])
-  }
-
-  const addBuildToCart = () => {
-    const buildItem = {
-      id: `custom-${buildSize}-${buildPack}`,
-      size: buildSize,
-      pack: buildPack,
-      quantity: 1,
-      label: `${buildSize} • Pack of ${buildPack}`,
-      weight: `${buildSize === '5g' ? 5 : 10}g × ${buildPack} sticks`,
-      price: 'Configurable',
-    }
-
-    const existing = cart.find((item) => item.id === buildItem.id)
-
-    if (existing) {
-      setCart((current) =>
-        current.map((item) =>
-          item.id === buildItem.id ? { ...item, quantity: item.quantity + 1 } : item,
-        ),
-      )
-      return
-    }
-
-    setCart((current) => [...current, buildItem])
-  }
-
-  const adjustQuantity = (productId, delta) => {
-    setProductQuantities((current) => ({
-      ...current,
-      [productId]: Math.max(1, (current[productId] || 1) + delta),
-    }))
-  }
-
-  const updateCartQuantity = (cartId, delta) => {
-    setCart((current) =>
-      current
-        .map((item) =>
-          item.id === cartId
-            ? { ...item, quantity: Math.max(1, item.quantity + delta) }
-            : item,
-        )
-        .filter((item) => item.quantity > 0),
-    )
-  }
-
-  const removeCartItem = (cartId) => {
-    setCart((current) => current.filter((item) => item.id !== cartId))
-  }
-
-  const sizeKey = activeSize === '5g' ? '5g' : '10g'
-
-  return (
-    <div className="page-shell">
-      <header className="site-header">
-        <div className="brand-block">
-          <img className="brand-mark" src="/images/norvax-bee-logo.svg" alt="" />
-          <div className="brand-copy">
-            <div className="brand-name-row">
-              <span className="brand-name">Norvax</span>
-              <span className="brand-name brand-name--accent">Hub</span>
-            </div>
-            <span className="header-tagline">Nature&apos;s sweetness in every drop</span>
-          </div>
-        </div>
-
-        <nav className="main-nav" aria-label="Main navigation">
-          {navItems.map((item) => (
-            <a key={item.label} href={`#${item.href}`} className="nav-link" onClick={(event) => {
-              event.preventDefault()
-              scrollToSection(item.href)
-            }}>
-              {item.label}
-            </a>
-          ))}
-        </nav>
-
-        <div className="header-actions" aria-label="Quick actions">
-          <button type="button" className="icon-button" aria-label="Search" onClick={() => scrollToSection('shop')}>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 3a7.5 7.5 0 015.94 12.56l4.33 4.34 1.41-1.41-4.34-4.33A7.5 7.5 0 1110.5 3zm0 2a5.5 5.5 0 100 11 5.5 5.5 0 000-11z"/></svg>
-          </button>
-          <button type="button" className="icon-button" aria-label="Account" onClick={() => scrollToSection('contact')}>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 100-8 4 4 0 000 8zm0 2c-4.42 0-8 2.24-8 5v1h16v-1c0-2.76-3.58-5-8-5z"/></svg>
-          </button>
-          <button type="button" className="icon-button cart-button" aria-label="Cart" onClick={() => scrollToSection('cart')}>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18a2 2 0 110 4 2 2 0 010-4zm10 0a2 2 0 110 4 2 2 0 010-4zM7.2 15h10.9a2 2 0 001.96-1.63l1.12-6.28A1 1 0 0020.2 6H6.42L6 3H3v2h1.6l2.7 10.22L7 16h11v2H7.2z"/></svg>
-            <span>{cart.length}</span>
-          </button>
-        </div>
-      </header>
-
-      <main className="page-content">
-        <section className="hero-section" id="home">
-          <div className="hero-copy">
-            <div className="hero-ambience" aria-hidden="true">
-              <span className="hero-particle hero-particle-one"></span>
-              <span className="hero-particle hero-particle-two"></span>
-              <span className="hero-honeyline"></span>
-            </div>
-            <p className="hero-eyebrow">Pure honey • Single serve</p>
-            <h1 className="hero-headline">
-              <span className="hero-headline-serif">Honey.</span>
-              <span className="hero-headline-sans">Made <span className="hero-headline-accent">Convenient.</span></span>
-            </h1>
-            <p className="hero-copy-primary">Pure honey, portioned for everyday moments.</p>
-            <p className="hero-copy-secondary">Available in convenient 5g and 10g individually packed sticks.</p>
-
-            <div className="hero-process" aria-label="Tear, squeeze, enjoy">
-              <div className="hero-process-step">
-                <span className="process-number">01</span>
-                <span className="process-label">Tear</span>
-              </div>
-              <span className="process-arrow" aria-hidden="true">→</span>
-              <div className="hero-process-step">
-                <span className="process-number">02</span>
-                <span className="process-label">Squeeze</span>
-              </div>
-              <span className="process-arrow" aria-hidden="true">→</span>
-              <div className="hero-process-step">
-                <span className="process-number">03</span>
-                <span className="process-label">Enjoy</span>
-              </div>
-            </div>
-
-            <div className="hero-size-control">
-              <div className="hero-size-heading">
-                <span className="hero-size-label">Choose your stick</span>
-                <span className="hero-size-note" aria-live="polite">
-                  {activeSize === '5g' ? 'Light single serving' : 'Generous single serving'}
-                </span>
-              </div>
-              <div className="size-switcher" data-active-size={activeSize} role="group" aria-label="Choose stick size">
-                <span className="size-indicator" aria-hidden="true"></span>
-                {['5g', '10g'].map((size) => (
-                  <button
-                    key={size}
-                    type="button"
-                    className={size === activeSize ? 'size-pill active' : 'size-pill'}
-                    aria-pressed={size === activeSize}
-                    onClick={() => setActiveSize(size)}
-                  >
-                    {size}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="hero-actions">
-              <button type="button" className="primary-button hero-primary" onClick={() => scrollToSection('shop')}>
-                <span>Shop honey</span>
-                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 10h12m-5-5 5 5-5 5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
-              </button>
-              <button type="button" className="secondary-button hero-secondary" onClick={() => scrollToSection('our-honey')}>Discover more</button>
-            </div>
-
-            <p className="hero-trust-line">5g &amp; 10g <span>•</span> Individually packed <span>•</span> Easy to carry</p>
-          </div>
-
-          <div className="hero-visual" aria-live="polite">
-            <div
-              className={`hero-scene hero-scene-${activeSize}`}
-              onMouseMove={(event) => {
-                const bounds = event.currentTarget.getBoundingClientRect()
-                const offsetX = ((event.clientX - bounds.left) / bounds.width - 0.5) * 4
-                const offsetY = ((event.clientY - bounds.top) / bounds.height - 0.5) * -4
-                setHeroTilt({ x: offsetX, y: offsetY })
-              }}
-              onMouseLeave={() => setHeroTilt({ x: 0, y: 0 })}
-              style={{
-                '--tilt-x': `${heroTilt.x}deg`,
-                '--tilt-y': `${heroTilt.y}deg`,
-              }}
-            >
-              <img
-                className="hero-product-photo"
-                src={activeSize === '5g' ? '/images/hero-5g-poster.jpeg' : '/images/hero-10g-poster.png'}
-                alt={`Norvax Hub ${activeSize} honey sticks promotional poster`}
-              />
-            </div>
-          </div>
-        </section>
-
-        <section className="intro-section" id="intro">
-          <div className="section-heading centered">
-            <span className="heading-tag">Honey, One Stick at a Time.</span>
-            <h2>Enjoy honey in a convenient, individually packed format.</h2>
-            <p>Norvax Hub Honey Sticks make it simple to enjoy honey at home, at work or on the go.</p>
-          </div>
-
-          <div className="feature-grid">
-            {featureCards.map((feature) => (
-              <article className="feature-card" key={feature.title}>
-                <div className="feature-icon">{feature.title === 'Individually Packed' ? '▣' : feature.title === 'Easy To Carry' ? '◌' : '✦'}</div>
-                <h3>{feature.title}</h3>
-                <p>{feature.text}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="shop-section" id="shop">
-          <div className="section-heading">
-            <span className="heading-tag">Shop our honey</span>
-            <h2>Choose the pack that fits your flow.</h2>
-          </div>
-
-          <div className="catalog-grid">
-            {catalogProducts.map((product) => (
-              <article className="product-card" key={product.id}>
-                <div className="product-visual">
-                  <img className="product-photo" src={product.image} alt={`${product.size} Norvax Hub honey sticks, pack of ${product.pack}`} loading="lazy" />
-                </div>
-
-                <div className="product-info">
-                  <small>{product.size} honey sticks</small>
-                  <h3>Pack of {product.pack}</h3>
-                  <p>{product.total}</p>
-                </div>
-
-                <div className="quantity-row">
-                  <button type="button" onClick={() => adjustQuantity(product.id, -1)} aria-label="Decrease quantity">−</button>
-                  <span>{productQuantities[product.id]}</span>
-                  <button type="button" onClick={() => adjustQuantity(product.id, 1)} aria-label="Increase quantity">+</button>
-                </div>
-
-                <div className="product-actions">
-                  <button type="button" className="ghost-button" onClick={() => scrollToSection('our-honey')}>View Product</button>
-                  <button type="button" className="primary-button" onClick={() => addToCart(product)}>Add to Cart</button>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="build-section">
-          <div className="section-heading">
-            <span className="heading-tag">Build your pack</span>
-            <h2>Make your perfect honey bundle.</h2>
-          </div>
-
-          <div className="build-layout">
-            <div className="build-controls">
-              <div className="build-step">
-                <label>Choose stick size</label>
-                <div className="size-switcher compact">
-                  {['5g', '10g'].map((size) => (
-                    <button
-                      key={size}
-                      type="button"
-                      className={size === buildSize ? 'size-pill active' : 'size-pill'}
-                      onClick={() => setBuildSize(size)}
-                    >
-                      {size}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="build-step">
-                <label>Choose pack</label>
-                <div className="pack-switcher">
-                  {[5, 10, 20, 50].map((pack) => (
-                    <button
-                      key={pack}
-                      type="button"
-                      className={pack === buildPack ? 'pack-pill active' : 'pack-pill'}
-                      onClick={() => setBuildPack(pack)}
-                    >
-                      {pack}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="build-summary">
-              <div className="summary-box">
-                <div className="summary-result">{buildSize} × {buildPack} sticks</div>
-                <div className="summary-total">= {totalHoneyWeight}g Total Honey</div>
-                <button type="button" className="primary-button wide" onClick={addBuildToCart}>Add to Cart</button>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="story-section" id="how-it-works">
-          <div className="section-heading">
-            <span className="heading-tag">From Honey to Your Stick</span>
-            <h2>Simple, thoughtful packing from the first drop.</h2>
-          </div>
-
-          <div className="packing-flow" aria-label="Honey packing process">
-            {['Honey', 'Portion', 'Seal', 'Pack', 'Ready to Enjoy'].map((stage, index) => (
-              <div className="flow-step" key={stage}>
-                <div className="flow-icon" aria-hidden="true">
-                  {index === 0 && '✦'}
-                  {index === 1 && '▣'}
-                  {index === 2 && '◈'}
-                  {index === 3 && '▤'}
-                  {index === 4 && '✓'}
-                </div>
-                <span>{stage}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="usage-section">
-          <div className="section-heading">
-            <span className="heading-tag">Tear • Squeeze • Enjoy</span>
-            <h2>Made for everyday moments.</h2>
-          </div>
-
-          <div className="usage-grid">
-            {['Tear', 'Squeeze', 'Enjoy'].map((step, index) => (
-              <article className="usage-card" key={step}>
-                <div className="usage-index">STEP {index + 1}</div>
-                <h3>{step}</h3>
-                <div className="usage-visual usage-visual--1">
-                  {index === 0 && <div className="tear-strip"></div>}
-                  {index === 1 && <div className="squeeze-sachet"><span></span></div>}
-                  {index === 2 && <div className="enjoy-flow"></div>}
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="lifestyle-section">
-          <div className="section-heading">
-            <span className="heading-tag">A Little Sweetness, Wherever You Are.</span>
-            <h2>Perfect for your daily rituals.</h2>
-          </div>
-
-          <div className="use-case-grid">
-            {useCases.map((useCase) => (
-              <div key={useCase.name} className="use-case">
-                <div className="use-case-icon">{useCase.icon}</div>
-                <span>{useCase.name}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="feature-box-section">
-          <div className="feature-box-visual">
-            <div className="box-hero-pack">
-              <div className="box-hero-stacks">
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
-              <div className="box-hero-label">
-                <strong>Norvax Hub</strong>
-                <small>Pure &amp; Natural</small>
-                <em>5g × 50 Sachets</em>
-              </div>
-            </div>
-          </div>
-
-          <div className="feature-box-copy">
-            <span className="heading-tag">50-pack feature</span>
-            <h2>50 honey sticks. 5g each. 250g total.</h2>
-            <p>Designed for everyday convenience, shared moments and quick refreshers throughout the day.</p>
-            <button type="button" className="primary-button">View 50 pack</button>
-          </div>
-        </section>
-
-        <section className="educational-section" id="our-honey">
-          <div className="section-heading">
-            <span className="heading-tag">Our Honey</span>
-            <h2>Simple. Convenient. Made for everyday moments.</h2>
-          </div>
-
-          <div className="info-grid">
-            <div className="info-panel">
-              <h3>Ingredients</h3>
-              <p>100% honey</p>
-            </div>
-            <div className="info-panel">
-              <h3>Stick size</h3>
-              <p>5g / 10g</p>
-            </div>
-            <div className="info-panel">
-              <h3>Net weight</h3>
-              <p>25g–500g depending on pack</p>
-            </div>
-            <div className="info-panel">
-              <h3>Storage instructions</h3>
-              <p>Store in a cool, dry place away from direct sunlight.</p>
-            </div>
-            <div className="info-panel">
-              <h3>How to use</h3>
-              <p>Tear, squeeze and enjoy.</p>
-            </div>
-            <div className="info-panel">
-              <h3>Country of origin</h3>
-              <p>Configurable placeholder</p>
-            </div>
-            <div className="info-panel">
-              <h3>Best before</h3>
-              <p>Configurable placeholder</p>
-            </div>
-          </div>
-        </section>
-
-        <section className="story-brand-section" id="our-story">
-          <div className="story-card">
-            <span className="heading-tag">The Norvax Hub Story</span>
-            <h2>Thoughtful packaging for modern everyday sweetness.</h2>
-            <p>We believe convenience should feel refined, practical and easy to enjoy. Norvax Hub brings together thoughtful packaging, quality honey and a design that fits seamlessly into daily routines.</p>
-            <p>From morning tea to office breaks and travel moments, each stick is created to make honey feel simple, clean and ready whenever you need it.</p>
-          </div>
-        </section>
-
-        <section className="wholesale-section" id="wholesale">
-          <div className="wholesale-copy">
-            <span className="heading-tag">Honey Sticks for Your Business</span>
-            <h2>Convenient individually packed honey for cafés, offices, events and retailers.</h2>
-            <p>Looking for convenient individually packed honey for your business? Contact Norvax Hub about bulk and wholesale orders.</p>
-            <button type="button" className="primary-button">Request wholesale pricing</button>
-          </div>
-
-          <form className="wholesale-form" onSubmit={(event) => event.preventDefault()}>
-            <div className="field-row">
-              <label>
-                <span>Name</span>
-                <input type="text" placeholder="Your name" />
-              </label>
-              <label>
-                <span>Business Name</span>
-                <input type="text" placeholder="Business name" />
-              </label>
-            </div>
-            <div className="field-row">
-              <label>
-                <span>Email</span>
-                <input type="email" placeholder="name@email.com" />
-              </label>
-              <label>
-                <span>Phone / WhatsApp</span>
-                <input type="tel" placeholder="Optional" />
-              </label>
-            </div>
-            <div className="field-row">
-              <label>
-                <span>Business Type</span>
-                <input type="text" placeholder="Café, hotel, office..." />
-              </label>
-              <label>
-                <span>5g / 10g / Both</span>
-                <input type="text" placeholder="Preferred size" />
-              </label>
-            </div>
-            <label>
-              <span>Estimated Quantity</span>
-              <input type="text" placeholder="e.g. 500 packs" />
-            </label>
-            <label>
-              <span>Message</span>
-              <textarea rows="4" placeholder="Tell us about your requirements" />
-            </label>
-            <button type="submit" className="primary-button wide" onClick={() => scrollToSection('contact')}>Send enquiry</button>
-          </form>
-        </section>
-
-        <section className="faq-section" id="faq">
-          <div className="section-heading centered">
-            <span className="heading-tag">FAQ</span>
-            <h2>Questions, answered simply.</h2>
-          </div>
-
-          <div className="faq-list" id="faq">
-            {faqItems.map((item, index) => (
-              <div key={item.question} className={expandedFaq === index ? 'faq-item open' : 'faq-item'}>
-                <button type="button" className="faq-question" onClick={() => setExpandedFaq(expandedFaq === index ? -1 : index)}>
-                  <span>{item.question}</span>
-                  <span className="faq-toggle">+</span>
-                </button>
-                {expandedFaq === index && <p className="faq-answer">{item.answer}</p>}
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="contact-section" id="contact">
-          <div className="contact-copy">
-            <span className="heading-tag">Contact</span>
-            <h2>Let’s talk honey.</h2>
-            <p>Use the contact form or message us directly.</p>
-            <div className="contact-meta">
-              <div><strong>Email</strong><span>hello@norvaxhub.com</span></div>
-              <div><strong>WhatsApp</strong><span>+00 000 000 000</span></div>
-              <div><strong>Social</strong><span>Instagram • Facebook • LinkedIn</span></div>
-            </div>
-            <div className="contact-actions">
-              <button type="button" className="primary-button">WhatsApp</button>
-              <button type="button" className="secondary-button">Email</button>
-            </div>
-          </div>
-
-          <form className="contact-form" onSubmit={(event) => event.preventDefault()}>
-            <label>
-              <span>Name</span>
-              <input type="text" placeholder="Your name" />
-            </label>
-            <label>
-              <span>Email</span>
-              <input type="email" placeholder="Your email" />
-            </label>
-            <label>
-              <span>Message</span>
-              <textarea rows="5" placeholder="How can we help?" />
-            </label>
-            <button type="submit" className="primary-button wide">Send message</button>
-          </form>
-        </section>
-
-        <section className="cart-section" id="cart">
-          <div className="section-heading">
-            <span className="heading-tag">Cart</span>
-            <h2>Your selected honey packs.</h2>
-          </div>
-
-          <div className="cart-card">
-            {cart.length === 0 ? (
-              <p className="empty-cart">Your cart is empty.</p>
-            ) : (
-              <div className="cart-list">
-                {cart.map((item) => (
-                  <div className="cart-item" key={item.id}>
-                    <div className="cart-thumb">
-                      <div className={`mini-pack mini-pack--${item.size.toLowerCase()}`}></div>
-                    </div>
-                    <div className="cart-details">
-                      <strong>{item.label}</strong>
-                      <small>{item.weight}</small>
-                    </div>
-                    <div className="cart-qty">
-                      <button type="button" onClick={() => updateCartQuantity(item.id, -1)} aria-label="Decrease cart item">−</button>
-                      <span>{item.quantity}</span>
-                      <button type="button" onClick={() => updateCartQuantity(item.id, 1)} aria-label="Increase cart item">+</button>
-                    </div>
-                    <div className="cart-price">{item.price}</div>
-                    <button type="button" className="remove-link" onClick={() => removeCartItem(item.id)}>Remove</button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="cart-footer">
-              <div className="cart-subtotal">
-                <span>Subtotal</span>
-                <strong>{subtotal} item(s)</strong>
-              </div>
-              <div className="cart-actions-row">
-                <button type="button" className="secondary-button" onClick={() => scrollToSection('shop')}>Continue shopping</button>
-                <button type="button" className="primary-button" onClick={() => scrollToSection('contact')}>Checkout</button>
-              </div>
-            </div>
-          </div>
-        </section>
-      </main>
-    </div>
-  )
+function Icon({ type = 'arrow', ...props }) {
+  const paths = { arrow: 'M4 12h16m-6-6 6 6-6 6', play: 'm9 5 11 7-11 7V5Z', bag: 'M5 7h14l1 14H4L5 7Zm3 0V5a4 4 0 0 1 8 0v2', close: 'm6 6 12 12M6 18 18 6', menu: 'M4 6h16M4 12h16M4 18h16', leaf: 'M19 4C6 2 1 10 7 17S23 14 19 4ZM5 21l11-12', drop: 'M12 2S5 10 5 15a7 7 0 0 0 14 0c0-5-7-13-7-13Z', pack: 'm3 7 9-5 9 5-9 5-9-5Zm0 5 9 5 9-5M3 17l9 5 9-5', pause: 'M8 5v14M16 5v14', replay: 'M4 10a8 8 0 1 1 0 5M4 4v6h6' }
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path d={paths[type]} /></svg>
+}
+function Brand() {
+  return <a className="brand" href="#home" aria-label="Norvax Hub home"><img src="/images/norvax-bee-logo.svg" alt="" width="40" height="48" /><span>Norvax <em>Hub</em></span></a>
+}
+function Scene({ mode, size = '5g', playing, replay = 0 }) {
+  const element = useRef(null)
+  const [loaded, setLoaded] = useState(mode === 'hero')
+  useEffect(() => {
+    if (loaded) return
+    const observer = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) { setLoaded(true); observer.disconnect() } }, { rootMargin: '250px' })
+    observer.observe(element.current)
+    return () => observer.disconnect()
+  }, [loaded])
+  return <div className={`scene scene-${mode}`} ref={element}>
+    {loaded && <Suspense fallback={<HoneyIllustration mode={mode} size={size} playing={playing} replay={replay} />}><HoneyScene mode={mode} size={size} playing={playing} replay={replay} /></Suspense>}
+  </div>
+}
+function SizeSwitch({ size, onChange, label = 'Stick size' }) {
+  return <div className="size-switch" role="group" aria-label={label}>{['5g', '10g'].map((value) => <button key={value} aria-pressed={size === value} onClick={() => onChange(value)}>{value}<span> per stick</span></button>)}</div>
+}
+function Modal({ open, onClose, title, children, className = '' }) {
+  const dialog = useRef(null)
+  useEffect(() => {
+    const element = dialog.current
+    if (open && !element.open) element.showModal()
+    if (!open && element.open) element.close()
+    if (open) document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [open])
+  return <dialog className={`modal ${className}`} ref={dialog} aria-label={title} onCancel={onClose} onClick={(event) => { if (event.target === event.currentTarget) onClose() }}><div className="modal-content"><button className="modal-close icon-button" aria-label="Close dialog" onClick={onClose}><Icon type="close" /></button>{children}</div></dialog>
 }
 
-export default App
+export default function App() {
+  const [size, setSize] = useState('5g')
+  const [cart, setCart] = useState(() => { try { return restoreCart(window.localStorage) } catch { return [] } })
+  const [menu, setMenu] = useState(false)
+  const [cartOpen, setCartOpen] = useState(false)
+  const [product, setProduct] = useState(null)
+  const [quantity, setQuantity] = useState(1)
+  const [message, setMessage] = useState('')
+  const [emailDraft, setEmailDraft] = useState('')
+  const [motion, setMotion] = useState(() => !window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+  const [ritualPlaying, setRitualPlaying] = useState(true)
+  const [fillPlaying, setFillPlaying] = useState(true)
+  const [ritualReplay, setRitualReplay] = useState(0)
+  const [fillReplay, setFillReplay] = useState(0)
+  const formRef = useRef(null)
+  const totalPacks = cart.reduce((sum, entry) => sum + entry.quantity, 0)
+  const totalGrams = cart.reduce((sum, entry) => sum + weight(products.find((item) => item.id === entry.id)) * entry.quantity, 0)
+
+  useEffect(() => { try { localStorage.setItem('norvax-cart-v1', JSON.stringify(cart)) } catch { /* The bag remains usable when storage is unavailable. */ } }, [cart])
+  useEffect(() => {
+    if (!message) return
+    const timeout = setTimeout(() => setMessage(''), 4500)
+    return () => clearTimeout(timeout)
+  }, [message])
+  useEffect(() => {
+    const preference = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const update = () => setMotion(!preference.matches)
+    preference.addEventListener('change', update)
+    return () => preference.removeEventListener('change', update)
+  }, [])
+  useEffect(() => {
+    const close = (event) => { if (event.key === 'Escape') setMenu(false) }
+    window.addEventListener('keydown', close)
+    return () => window.removeEventListener('keydown', close)
+  }, [])
+  function add(productToAdd, count = 1) {
+    setCart((current) => addItem(current, productToAdd.id, count))
+    setMessage(`${count} × ${productToAdd.size} pack of ${productToAdd.pack} added to your bag.`)
+  }
+  function selectProduct(value) { setProduct(value); setQuantity(1) }
+  function changeQuantity(id, delta) { setCart((current) => current.map((entry) => entry.id === id ? { ...entry, quantity: Math.max(1, Math.min(99, entry.quantity + delta)) } : entry)) }
+  function prepareEnquiry(event) {
+    event.preventDefault()
+    const data = new FormData(event.currentTarget)
+    const body = `Name: ${data.get('name')}\nEmail: ${data.get('email')}\nBusiness: ${data.get('business') || 'Personal enquiry'}\nPhone: ${data.get('phone') || 'Not supplied'}\nEnquiry: ${data.get('kind')}\nPreferred size: ${data.get('size')}\nEstimated quantity: ${data.get('quantity') || 'To confirm'}\n\n${data.get('message')}\n\n${cart.length ? 'Selected packs:\n' + orderSummary(cart) : ''}`
+    setEmailDraft(`mailto:${email}?subject=${encodeURIComponent('Norvax Hub — ' + data.get('kind'))}&body=${encodeURIComponent(body)}`)
+  }
+  function requestQuote() {
+    setCartOpen(false)
+    requestAnimationFrame(() => {
+      document.getElementById('contact').scrollIntoView({ behavior: motion ? 'smooth' : 'instant' })
+      formRef.current?.elements.namedItem('name')?.focus({ preventScroll: true })
+    })
+  }
+
+  return <div className={`page-shell ${!motion ? 'motion-paused' : ''}`}>
+    <a className="skip-link" href="#main">Skip to content</a>
+    <header className="site-header">
+      <Brand />
+      <nav id="main-navigation" className={menu ? 'main-nav is-open' : 'main-nav'} aria-label="Main navigation">
+        {[['Shop', 'shop'], ['How to Use', 'how-it-works'], ['Our Story', 'our-story'], ['Wholesale', 'wholesale']].map(([label, id]) => <a href={`#${id}`} key={id} onClick={() => setMenu(false)}>{label}</a>)}
+      </nav>
+      <div className="header-actions">
+        <button className="bag-button" aria-label={`Open shopping bag, ${totalPacks} pack${totalPacks === 1 ? '' : 's'}`} onClick={() => setCartOpen(true)}><Icon type="bag" /><span className="bag-count">{totalPacks}</span></button>
+        <button className="icon-button menu-button" aria-label={menu ? 'Close navigation' : 'Open navigation'} aria-expanded={menu} aria-controls="main-navigation" onClick={() => setMenu(!menu)}><Icon type={menu ? 'close' : 'menu'} /></button>
+      </div>
+    </header>
+    <main id="main">
+      <section id="home" className="hero">
+        <div className="hero-copy">
+          <p className="eyebrow"><span /> Nature’s sweetness, simply packed</p>
+          <h1>A little honey.<br />A <em>sweeter</em> moment.</h1>
+          <p className="hero-description">Your daily sweetness, beautifully portioned.<br className="desktop-break" /> Honey sticks made for wherever life takes you.</p>
+          <div className="hero-actions"><a className="button button-dark" href="#shop">Shop honey sticks <Icon /></a><a className="text-button" href="#how-it-works"><span className="play-circle"><Icon type="play" /></span> Watch the ritual</a></div>
+          <p className="hero-note">5g &amp; 10g <span>·</span> Individually packed <span>·</span> Easy to carry</p>
+        </div>
+        <div className="hero-art">
+          <div className="hero-halo" /><div className="hero-orbit" />
+          <span className="art-caption">SMALL STICK. SWEET POSSIBILITY.</span>
+          <Scene mode="hero" size={size} playing={motion} />
+          <div className="hero-art-footer"><SizeSwitch size={size} onChange={setSize} label="Preview stick size" /><button className="motion-button" aria-label={motion ? 'Pause all animations' : 'Resume animations'} onClick={() => setMotion(!motion)}><Icon type={motion ? 'pause' : 'play'} /></button></div>
+          <span className="scene-note">Animated product illustration</span>
+        </div>
+      </section>
+      <div className="benefit-strip"><span><Icon type="pack" /> Perfectly portioned</span><span><Icon type="bag" /> Ready wherever you are</span><span><Icon type="drop" /> Tear. Squeeze. Enjoy.</span></div>
+
+      <section id="shop" className="section shop">
+        <div className="section-top"><div><p className="eyebrow">YOUR EVERYDAY ESSENTIAL</p><h2>Find your kind<br className="mobile-break" /> of <em>sweet.</em></h2></div><div className="shop-selector"><span>Choose your stick size</span><SizeSwitch size={size} onChange={setSize} label="Shop stick size" /></div></div>
+        <div className="product-grid">{products.filter((item) => item.size === size).map((item, index) => <article className="product-card" key={item.id}>
+          <button className="product-image-button" onClick={() => selectProduct(item)} aria-label={`View ${item.size} pack of ${item.pack}`}><span className="product-number">0{index + 1}</span><img src={item.image} alt={`${item.size} Norvax Hub honey sticks, pack of ${item.pack}`} width="640" height="640" loading="lazy" /><span className="image-link"><Icon /></span></button>
+          <div className="product-title"><h3>{item.pack} sticks</h3><span>{weight(item)}g total</span></div>
+          <p>{['A little introduction.', 'For your daily ritual.', 'Sweetness to share.', 'Keep everyone stocked.'][index]}</p>
+          <div className="product-actions"><button className="choose-button" onClick={() => selectProduct(item)}>Choose pack <Icon /></button><button className="quick-add" aria-label={`Add ${item.size} pack of ${item.pack} to bag`} onClick={() => add(item)}>+</button></div>
+        </article>)}</div>
+        <div className="shop-footnote"><p>Choose your favourites. We’ll confirm pricing and delivery with your quote.</p><button className="text-button" onClick={() => setCartOpen(true)}>View your bag <Icon type="bag" /></button></div>
+      </section>
+
+      <section id="how-it-works" className="ritual">
+        <div className="ritual-copy"><p className="eyebrow">A MOMENT, JUST FOR YOU</p><h2>Tear. Squeeze.<br /><em>Slow down.</em></h2><p>Morning tea. An afternoon coffee.<br />A little honey makes the ordinary sweeter.</p><div className="scene-actions"><button className="button button-light" onClick={() => { setRitualReplay((value) => value + 1); setRitualPlaying(true); setMotion(true) }}><Icon type="replay" /> Replay the ritual</button><button className="motion-button" aria-label={ritualPlaying ? 'Pause pouring animation' : 'Play pouring animation'} onClick={() => setRitualPlaying(!ritualPlaying)}><Icon type={ritualPlaying ? 'pause' : 'play'} /></button></div><ol className="ritual-steps"><li><span>01</span> Open</li><li><span>02</span> Squeeze</li><li><span>03</span> Enjoy</li></ol></div>
+        <div className="ritual-art"><Scene mode="pour" playing={motion && ritualPlaying} replay={ritualReplay} /><span className="scene-note">Illustrative opening &amp; pouring demonstration</span></div>
+      </section>
+
+      <section className="section packing" id="packing">
+        <div className="packing-art"><Scene mode="fill" playing={motion && fillPlaying} replay={fillReplay} /><span className="packing-art-label">THE ANATOMY OF A SWEET MOMENT</span></div>
+        <div className="packing-copy"><p className="eyebrow">THOUGHTFULLY PORTIONED</p><h2>From the<br /><em>first drop.</em></h2><p>A closer look at the idea behind every stick: honey, a convenient portion, and a sealed wrapper that is ready when you are.</p><ol className="packing-steps"><li><span>01</span><div><h3>Fill</h3><p>Golden honey, portioned into the clear wrapper.</p></div></li><li><span>02</span><div><h3>Seal</h3><p>Individually packed for everyday convenience.</p></div></li><li><span>03</span><div><h3>Ready for your day</h3><p>Choose your pack and take a little sweetness along.</p></div></li></ol><div className="scene-actions"><button className="text-button" onClick={() => { setFillReplay((value) => value + 1); setFillPlaying(true); setMotion(true) }}><Icon type="replay" /> Replay filling</button><button className="motion-button" aria-label={fillPlaying ? 'Pause filling animation' : 'Play filling animation'} onClick={() => setFillPlaying(!fillPlaying)}><Icon type={fillPlaying ? 'pause' : 'play'} /></button></div><small className="illustration-note">A product illustration, not footage of our production line.</small></div>
+      </section>
+
+      <section className="story section" id="our-story"><div className="story-photo"><img src="/images/hero-honey-pack.jpg" alt="Norvax Hub honey sticks in their retail display pack" width="1312" height="1199" loading="lazy" /><span className="photo-caption">A LITTLE SWEETNESS, WHEREVER YOU ARE.</span></div><div className="story-copy"><p className="eyebrow">THE NORVAX HUB STORY</p><h2>Simple pleasures.<br /><em>Thoughtful details.</em></h2><p>We believe the little things make the everyday special. A quiet cup of tea. A shared breakfast. A moment to yourself.</p><p>Norvax Hub brings honey to those moments in a convenient, individually packed format. Easy to carry, simple to use, and ready for your next ritual.</p><a className="text-button" href="#our-honey">Get to know our honey <Icon /></a></div></section>
+
+      <section className="honey-details section" id="our-honey"><p className="eyebrow">GOOD TO KNOW</p><h2>Honey, made <em>simple.</em></h2><dl><div><dt>Ingredients</dt><dd>100% honey</dd></div><div><dt>Portion sizes</dt><dd>5g or 10g per stick</dd></div><div><dt>Pack options</dt><dd>5, 10, 20 or 50 sticks</dd></div><div><dt>Keep it fresh</dt><dd>Store sealed in a cool, dry place, away from sunlight.</dd></div></dl><p className="detail-note">Please refer to your product packaging for origin and best-before details.</p></section>
+
+      <section className="wholesale-banner" id="wholesale"><div><p className="eyebrow">FOR CAFÉS, OFFICES & EVERYONE IN BETWEEN</p><h2>Good things are<br /><em>better shared.</em></h2></div><div><p>Bring a little sweetness to your business.<br />Let’s find the right packs for your guests, customers or team.</p><a className="button button-dark" href="#contact" onClick={() => { if (formRef.current) formRef.current.elements.namedItem('kind').value = 'Wholesale enquiry' }}>Let’s talk wholesale <Icon /></a></div></section>
+
+      <section className="section faq" id="faq"><div><p className="eyebrow">A FEW SWEET ANSWERS</p><h2>Curious?<br /><em>We’re here.</em></h2><a className="text-button" href="#contact">Ask us something <Icon /></a></div><div className="faq-list">{faqs.map(([question, answer]) => <details key={question}><summary>{question}<span aria-hidden="true">+</span></summary><p>{answer}</p></details>)}</div></section>
+
+      <section className="section contact" id="contact"><div className="contact-copy"><p className="eyebrow">LET’S TALK HONEY</p><h2>Something sweet<br /><em>starts here.</em></h2><p>Questions, order quotes or wholesale enquiries — we’d love to hear from you.</p><a className="contact-email" href={`mailto:${email}`}>{email} <Icon /></a><p className="contact-note">The form prepares an email for you to review and send from your email app.</p>{cart.length > 0 && <div className="enquiry-bag"><Icon type="bag" /><div><strong>{totalPacks} selected pack{totalPacks !== 1 ? 's' : ''}</strong><span>Your selection will be included in the enquiry.</span></div><button className="text-button" onClick={() => setCartOpen(true)}>Edit</button></div>}</div>
+        <form ref={formRef} onSubmit={prepareEnquiry} onChange={() => setEmailDraft('')}><div className="field-row"><label>Your name<input name="name" autoComplete="name" required maxLength="100" placeholder="Name" /></label><label>Email address<input name="email" type="email" autoComplete="email" required maxLength="160" placeholder="you@example.com" /></label></div><div className="field-row"><label>Enquiry type<select name="kind" defaultValue="Order quote"><option>Order quote</option><option>Wholesale enquiry</option><option>General question</option></select></label><label>Business name <span>(optional)</span><input name="business" autoComplete="organization" maxLength="160" placeholder="Your business" /></label></div><div className="field-row"><label>Preferred stick size<select name="size"><option>Both sizes</option><option>5g</option><option>10g</option></select></label><label>Estimated quantity <span>(optional)</span><input name="quantity" maxLength="60" placeholder="e.g. 20 packs of 50" /></label></div><label>Phone <span>(optional)</span><input name="phone" type="tel" autoComplete="tel" maxLength="40" placeholder="Phone or WhatsApp" /></label><label>Your message<textarea name="message" rows="3" required maxLength="2000" placeholder="Tell us a little about what you’re looking for…" /></label><button className="button button-dark" type="submit">Prepare enquiry <Icon /></button><div aria-live="polite">{emailDraft && <div className="email-ready"><strong>Your enquiry is ready to review.</strong><p>Open your email app, check the details and press Send there.</p><a className="button button-dark" href={emailDraft}>Open email draft <Icon /></a></div>}</div></form>
+      </section>
+    </main>
+    <footer><div className="footer-top"><Brand /><p>Nature’s sweetness in every drop.</p><div><a href="#shop">Shop</a><a href="#faq">FAQ</a><a href="#contact">Contact</a></div></div><div className="footer-bottom"><span>© {new Date().getFullYear()} Norvax Hub</span><button onClick={() => setMotion(!motion)}>{motion ? 'Pause animations' : 'Resume animations'} <Icon type={motion ? 'pause' : 'play'} /></button><a href="#home">Back to top ↑</a></div></footer>
+    <div className={`toast ${message ? 'visible' : ''}`} role="status">{message}<button onClick={() => { setCartOpen(true); setMessage('') }}>View bag <Icon type="bag" /></button></div>
+
+    <Modal open={Boolean(product)} onClose={() => setProduct(null)} title="Choose your honey pack" className="product-modal">{product && <><img src={product.image} alt={`${product.size} honey sticks, pack of ${product.pack}`} /><div className="product-modal-copy"><p className="eyebrow">NORVAX HUB HONEY STICKS</p><h2>{product.pack} little<br /><em>sweet moments.</em></h2><p>{product.size} per stick · {weight(product)}g total honey</p><SizeSwitch size={product.size} onChange={(value) => setProduct(products.find((item) => item.size === value && item.pack === product.pack))} /><fieldset className="pack-options"><legend>Sticks per pack</legend>{[5, 10, 20, 50].map((value) => <button type="button" key={value} aria-pressed={product.pack === value} onClick={() => setProduct(products.find((item) => item.size === product.size && item.pack === value))}>{value}</button>)}</fieldset><div className="quantity"><span>Number of packs</span><div><button aria-label="Decrease packs" disabled={quantity === 1} onClick={() => setQuantity(Math.max(1, quantity - 1))}>−</button><output>{quantity}</output><button aria-label="Increase packs" disabled={quantity === 99} onClick={() => setQuantity(Math.min(99, quantity + 1))}>+</button></div></div><button className="button button-dark" onClick={() => { add(product, quantity); setProduct(null) }}>Add to bag <Icon type="bag" /></button><small>Pricing and delivery confirmed with your order quote.</small></div></>}</Modal>
+    <Modal open={cartOpen} onClose={() => setCartOpen(false)} title="Your shopping bag" className="cart-modal"><p className="eyebrow">YOUR SELECTION</p><h2>A bag of <em>sweetness.</em></h2>{!cart.length ? <div className="empty-cart"><Icon type="bag" /><p>Your bag is waiting for a little honey.</p><button className="button button-dark" onClick={() => { setCartOpen(false); document.getElementById('shop').scrollIntoView() }}>Explore the collection <Icon /></button></div> : <><div className="cart-items">{cart.map((entry) => { const item = products.find((value) => value.id === entry.id); return <div className="cart-item" key={entry.id}><img src={item.image} alt={`${item.size} pack of ${item.pack}`} /><div><h3>{item.size} · {item.pack} sticks</h3><p>{weight(item)}g per pack</p><button className="remove" onClick={() => setCart((current) => current.filter((value) => value.id !== entry.id))}>Remove</button></div><div className="cart-quantity"><button aria-label={`Decrease ${entry.id}`} disabled={entry.quantity === 1} onClick={() => changeQuantity(entry.id, -1)}>−</button><output>{entry.quantity}</output><button aria-label={`Increase ${entry.id}`} disabled={entry.quantity === 99} onClick={() => changeQuantity(entry.id, 1)}>+</button></div></div> })}</div><div className="cart-summary"><span>{totalPacks} pack{totalPacks !== 1 ? 's' : ''}</span><strong>{totalGrams}g total honey</strong></div><p>We’ll confirm the price, delivery and payment details before you order.</p><button className="button button-dark" onClick={requestQuote}>Request an order quote <Icon /></button><button className="text-button continue" onClick={() => setCartOpen(false)}>Continue exploring</button></>}</Modal>
+  </div>
+}
