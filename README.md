@@ -8,12 +8,14 @@ React/Vite storefront for individually packed honey sticks. Keeps the existing p
 npm ci
 npm run dev
 npm run build
-node --test tests/catalog.test.js
+node --test tests/*.test.js
 ```
 
 ## Product animation
 
 `src/HoneyScene.jsx` contains lazy-loaded Three.js product, filling and pouring scenes. Clear flexible wrappers, an amber fill, seals and labels are modelled procedurally; the original bee logo is applied to the label texture. These are product illustrations rather than photographic manufacturing footage. The model is based on the existing photos, not measured production CAD.
+
+The lighting uses restrained exposure and soft studio reflections to preserve amber colour. Unlit label textures retain print contrast. The 18-second ritual anchors the honey stream at the torn opening, eases the spoon into circular stirring, and lets the tea wake settle before looping. Tea surface waves and colour mixing are lightweight shader effects, not a fluid simulation.
 
 `src/HoneyIllustration.jsx` provides animated SVG scenes when WebGL is unavailable. Scenes respect reduced-motion preferences and include pause/replay controls. WebGL rendering pauses when off-screen or the document is hidden. GPU resources are disposed on unmount.
 
@@ -24,7 +26,7 @@ Prices, payments and a contact backend were not configured in the original site.
 ## Validation
 
 - Production build passes. Three.js is a separately loaded chunk; Vite reports its chunk-size advisory.
-- Six regression tests cover catalogue weights, cart merging and bounds, corrupt storage, and exact enquiry summaries.
+- Nine regression tests cover catalogue/cart behaviour, pour-to-stir sequencing, settling/reset timing, and sachet-to-stream alignment during squeezing.
 - Desktop and 390px-frame browser checks cover navigation, size/pack selection, cart totals and email-draft preparation. No email was sent.
 - The cloud preview browser has WebGL disabled, so animated SVG fallback was inspected. Full WebGL visual validation remains necessary on a GPU-capable device before production release.
 
